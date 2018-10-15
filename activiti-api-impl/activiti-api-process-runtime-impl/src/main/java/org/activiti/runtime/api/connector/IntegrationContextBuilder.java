@@ -69,7 +69,7 @@ public class IntegrationContextBuilder {
     private Map<String, Object> buildInBoundVariables(ActionDefinition actionDefinition,
                                                       DelegateExecution execution) {
 
-        List<VariableDefinition> inBoundVariableDefinitions = actionDefinition == null ? null : actionDefinition.getInput();
+        List<VariableDefinition> inBoundVariableDefinitions = actionDefinition == null ? null : actionDefinition.getInputs();
 
         return variablesMatchHelper.match(execution.getVariables(), inBoundVariableDefinitions);
     }

@@ -33,18 +33,13 @@ public class DefaultServiceTaskBehavior extends AbstractBpmnActivityBehavior {
 
     private final ApplicationContext applicationContext;
     private final IntegrationContextBuilder integrationContextBuilder;
-    private final List<ConnectorDefinition> connectorDefinitions;
     private final ConnectorActionDefinitionFinder connectorActionDefinitionFinder;
     private final VariablesMatchHelper variablesMatchHelper;
 
     public DefaultServiceTaskBehavior(ApplicationContext applicationContext,
-                                      IntegrationContextBuilder integrationContextBuilder,
-                                      List<ConnectorDefinition> connectorDefinitions,
-                                      ConnectorActionDefinitionFinder connectorActionDefinitionFinder,
-                                      VariablesMatchHelper variablesMatchHelper) {
+                                      IntegrationContextBuilder integrationContextBuilder, ConnectorActionDefinitionFinder connectorActionDefinitionFinder, VariablesMatchHelper variablesMatchHelper) {
         this.applicationContext = applicationContext;
         this.integrationContextBuilder = integrationContextBuilder;
-        this.connectorDefinitions = connectorDefinitions;
         this.connectorActionDefinitionFinder = connectorActionDefinitionFinder;
         this.variablesMatchHelper = variablesMatchHelper;
     }
@@ -60,8 +55,7 @@ public class DefaultServiceTaskBehavior extends AbstractBpmnActivityBehavior {
 
         String implementation = ((ServiceTask) execution.getCurrentFlowElement()).getImplementation();
 
-        Optional<ActionDefinition> actionDefinitionOptional = connectorActionDefinitionFinder.find(implementation,
-                                                                                                   connectorDefinitions);
+        Optional<ActionDefinition> actionDefinitionOptional = connectorActionDefinitionFinder.find(implementation);
         ActionDefinition actionDefinition = null;
         if (actionDefinitionOptional.isPresent()) {
             actionDefinition = actionDefinitionOptional.get();
