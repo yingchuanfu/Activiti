@@ -175,4 +175,21 @@ public class RuntimeTestConfiguration {
             }
         };
     }
+
+    @Bean
+    public Connector variableMappingActionName() {
+        return integrationContext -> {
+            Map<String, Object> inBoundVariables = integrationContext.getInBoundVariables();
+
+            assertThat(((String) inBoundVariables.get("name"))).isEqualTo("inName");
+            assertThat(((Integer) inBoundVariables.get("age"))).isEqualTo(20);
+            assertThat(((String) inBoundVariables.get("input-unmapped-variable-name"))).isEqualTo("inTest");
+
+            integrationContext.addOutBoundVariable("out-variable-name-1", "outName");
+            integrationContext.addOutBoundVariable("out-variable-name-2", 50);
+            integrationContext.addOutBoundVariable("out-unmapped-variable-name", "outTest");
+            return integrationContext;
+        };
+    }
+
 }
