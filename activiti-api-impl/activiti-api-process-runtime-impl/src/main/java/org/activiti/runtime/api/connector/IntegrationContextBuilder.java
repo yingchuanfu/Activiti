@@ -17,22 +17,19 @@
 package org.activiti.runtime.api.connector;
 
 import org.activiti.api.process.model.IntegrationContext;
-import org.activiti.bpmn.model.ServiceTask;
-import org.activiti.engine.delegate.DelegateExecution;
-import org.activiti.engine.impl.persistence.entity.integration.IntegrationContextEntity;
-import org.activiti.core.common.model.connector.ActionDefinition;
-import org.activiti.core.common.model.connector.VariableDefinition;
 import org.activiti.api.runtime.model.impl.IntegrationContextImpl;
-
-import java.util.List;
-import java.util.Map;
+import org.activiti.bpmn.model.ServiceTask;
+import org.activiti.core.common.model.connector.ActionDefinition;
+import org.activiti.engine.delegate.DelegateExecution;
+import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
+import org.activiti.engine.impl.persistence.entity.integration.IntegrationContextEntity;
 
 public class IntegrationContextBuilder {
 
-    private final VariablesMatchHelper variablesMatchHelper;
+    private InboundVariablesProvider inboundVariablesProvider;
 
-    public IntegrationContextBuilder(VariablesMatchHelper variablesMatchHelper) {
-        this.variablesMatchHelper = variablesMatchHelper;
+    public IntegrationContextBuilder(InboundVariablesProvider inboundVariablesProvider) {
+        this.inboundVariablesProvider = inboundVariablesProvider;
     }
 
     public IntegrationContext from(IntegrationContextEntity integrationContextEntity,
@@ -43,9 +40,8 @@ public class IntegrationContextBuilder {
     }
 
     public IntegrationContext from(DelegateExecution execution, ActionDefinition actionDefinition) {
-        IntegrationContextImpl integrationContext = buildFromExecution(execution,
-                actionDefinition);
-        return integrationContext;
+        return buildFromExecution(execution,
+                                  actionDefinition);
     }
 
     private IntegrationContextImpl buildFromExecution(DelegateExecution execution,
@@ -53,27 +49,30 @@ public class IntegrationContextBuilder {
         IntegrationContextImpl integrationContext = new IntegrationContextImpl();
         integrationContext.setProcessInstanceId(execution.getProcessInstanceId());
         integrationContext.setProcessDefinitionId(execution.getProcessDefinitionId());
-        integrationContext.setActivityElementId(execution.getCurrentActivityId());
+        integrationContext.setBusinessKey(execution.getProcessInstanceBusinessKey());
+        integrationContext.setClientId(execution.getCurrentActivityId());
 
-        String implementation = ((ServiceTask) execution.getCurrentFlowElement()).getImplementation();
+        if(ExecutionEntity.class.isInstance(execution)) {
+            ExecutionEntity processInstance = ExecutionEntity.class.cast(execution)
+                                                                   .getProcessInstance();
+            if(processInstance != null) {
+                integrationContext.setProcessDefinitionKey(processInstance.getProcessDefinitionKey());
+                integrationContext.setProcessDefinitionVersion(processInstance.getProcessDefinitionVersion());
+                integrationContext.setParentProcessInstanceId(processInstance.getParentProcessInstanceId());
+            }
+        }
 
-        integrationContext.setConnectorType(implementation);
+        ServiceTask serviceTask = (ServiceTask)execution.getCurrentFlowElement();
+        if (serviceTask != null ) {
+            integrationContext.setConnectorType(serviceTask.getImplementation());
+            integrationContext.setClientName(serviceTask.getName());
+            integrationContext.setClientType(ServiceTask.class.getSimpleName());
+        }
 
-        integrationContext.setInBoundVariables(buildInBoundVariables(
-                actionDefinition,
-                execution));
+
+        integrationContext.setInBoundVariables(inboundVariablesProvider.calculateVariables(execution, actionDefinition));
 
         return integrationContext;
     }
 
-    private Map<String, Object> buildInBoundVariables(ActionDefinition actionDefinition,
-                                                      DelegateExecution execution) {
-
-        List<VariableDefinition> inBoundVariableDefinitions = actionDefinition == null ? null : actionDefinition.getInput();
-        if(variablesMatchHelper != null) {
-            return variablesMatchHelper.match(execution.getVariables(), inBoundVariableDefinitions);
-        }else{
-            return execution.getVariables();
-        }
-    }
 }

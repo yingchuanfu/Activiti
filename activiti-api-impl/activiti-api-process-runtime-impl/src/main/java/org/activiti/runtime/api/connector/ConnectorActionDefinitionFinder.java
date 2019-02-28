@@ -10,8 +10,13 @@ import org.apache.commons.lang3.StringUtils;
 
 public class ConnectorActionDefinitionFinder {
 
-    public Optional<ActionDefinition> find(String implementation,
-                                           List<ConnectorDefinition> connectorDefinitions) {
+    private final List<ConnectorDefinition> connectorDefinitions;
+
+    public ConnectorActionDefinitionFinder(List<ConnectorDefinition> connectorDefinitions) {
+        this.connectorDefinitions = connectorDefinitions;
+    }
+
+    public Optional<ActionDefinition> find(String implementation){
 
         Optional<ActionDefinition> actionDefinitionOptional = Optional.empty();
 
@@ -23,16 +28,18 @@ public class ConnectorActionDefinitionFinder {
         List<ConnectorDefinition> resultingConnectors = connectorDefinitions.stream().filter(c -> c.getId().equals(connectorId)).collect(Collectors.toList());
         if (resultingConnectors != null && resultingConnectors.size() != 0) {
             if (resultingConnectors.size() != 1) {
-                throw new RuntimeException("Mismatch connector id mapping: " + connectorId);
+                throw new RuntimeException("Expecting exactly 1 connector definition with id mapping `" + connectorId +
+                                                   "`, but were found " + resultingConnectors.size());
             }
             ConnectorDefinition connectorDefinition = resultingConnectors.get(0);
 
             ActionDefinition actionDefinition = connectorDefinition.getActions().get(actionId);
             if (actionDefinition == null) {
-                throw new RuntimeException("Mismatch action id mapping: " + actionId);
+                throw new RuntimeException("No action with id mapping `" + actionId + "` was found in connector `" +
+                                                   connectorId + "`");
             }
 
-            actionDefinitionOptional = Optional.ofNullable(actionDefinition);
+            actionDefinitionOptional = Optional.of(actionDefinition);
         }
 
         return actionDefinitionOptional;

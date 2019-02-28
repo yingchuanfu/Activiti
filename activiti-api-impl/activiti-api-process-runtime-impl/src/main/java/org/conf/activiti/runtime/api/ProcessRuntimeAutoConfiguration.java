@@ -40,6 +40,7 @@ import org.activiti.core.common.spring.security.policies.ProcessSecurityPolicies
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.RuntimeService;
 import org.activiti.engine.delegate.event.ActivitiEventType;
+import org.activiti.runtime.api.conf.CommonRuntimeAutoConfiguration;
 import org.activiti.runtime.api.conf.impl.ProcessRuntimeConfigurationImpl;
 import org.activiti.runtime.api.event.impl.ToAPIProcessCreatedEventConverter;
 import org.activiti.runtime.api.event.impl.ToAPIProcessStartedEventConverter;
@@ -65,18 +66,33 @@ import org.activiti.runtime.api.event.internal.ProcessUpdatedListenerDelegate;
 import org.activiti.runtime.api.event.internal.SequenceFlowTakenListenerDelegate;
 import org.activiti.runtime.api.impl.ProcessAdminRuntimeImpl;
 import org.activiti.runtime.api.impl.ProcessRuntimeImpl;
+import org.activiti.runtime.api.impl.RuntimeSignalPayloadEventListener;
 import org.activiti.runtime.api.model.impl.APIProcessDefinitionConverter;
 import org.activiti.runtime.api.model.impl.APIProcessInstanceConverter;
 import org.activiti.runtime.api.model.impl.APIVariableInstanceConverter;
 import org.activiti.runtime.api.model.impl.ToActivityConverter;
+import org.activiti.runtime.api.signal.SignalPayloadEventListener;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@AutoConfigureAfter(CommonRuntimeAutoConfiguration.class)
 public class ProcessRuntimeAutoConfiguration {
+    
+    /**
+     * Creates default SignalPayloadEventListener bean if no existing bean found in ApplicationContext
+     */
+    @Bean
+    @ConditionalOnMissingBean(SignalPayloadEventListener.class)
+    public SignalPayloadEventListener signalPayloadEventListener(RuntimeService runtimeService) {
+        return new RuntimeSignalPayloadEventListener(runtimeService);
+    }
+    
 
     @Bean
     @ConditionalOnMissingBean
@@ -86,16 +102,16 @@ public class ProcessRuntimeAutoConfiguration {
                                          ProcessSecurityPoliciesManager securityPoliciesManager,
                                          APIProcessInstanceConverter processInstanceConverter,
                                          APIVariableInstanceConverter variableInstanceConverter,
-                                         ProcessRuntimeConfiguration processRuntimeConfiguration
-                                         ) {
+                                         ProcessRuntimeConfiguration processRuntimeConfiguration,
+                                         ApplicationEventPublisher eventPublisher) {
         return new ProcessRuntimeImpl(repositoryService,
                 processDefinitionConverter,
                 runtimeService,
                 securityPoliciesManager,
                 processInstanceConverter,
                 variableInstanceConverter,
-                processRuntimeConfiguration
-                );
+                processRuntimeConfiguration,
+                eventPublisher);
     }
 
     @Bean
@@ -103,11 +119,13 @@ public class ProcessRuntimeAutoConfiguration {
     public ProcessAdminRuntime processAdminRuntime(RepositoryService repositoryService,
                                                    APIProcessDefinitionConverter processDefinitionConverter,
                                                    RuntimeService runtimeService,
-                                                   APIProcessInstanceConverter processInstanceConverter) {
+                                                   APIProcessInstanceConverter processInstanceConverter,
+                                                   ApplicationEventPublisher eventPublisher) {
         return new ProcessAdminRuntimeImpl(repositoryService,
                 processDefinitionConverter,
                 runtimeService,
-                processInstanceConverter
+                processInstanceConverter,
+                eventPublisher
         );
     }
 
@@ -121,11 +139,6 @@ public class ProcessRuntimeAutoConfiguration {
         return new APIProcessInstanceConverter();
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public APIVariableInstanceConverter apiVariableInstanceConverter() {
-        return new APIVariableInstanceConverter();
-    }
 
     @Bean
     public ProcessRuntimeConfiguration processRuntimeConfiguration(@Autowired(required = false) List<ProcessRuntimeEventListener<?>> processRuntimeEventListeners,
@@ -268,9 +281,5 @@ public class ProcessRuntimeAutoConfiguration {
         return () -> runtimeService.addEventListener(new SequenceFlowTakenListenerDelegate(getInitializedListeners(eventListeners),
                         new ToSequenceFlowTakenConverter()),
                 ActivitiEventType.SEQUENCEFLOW_TAKEN);
-    }
-    
-    private <T> List<T> getInitializedProcessRuntimeEventListeners(List<T> processRuntimeEventListeners) {
-        return processRuntimeEventListeners != null ? processRuntimeEventListeners : Collections.emptyList();
     }
 }

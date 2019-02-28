@@ -61,9 +61,8 @@ public class ProcessRuntimeImplTest {
                                                     securityPoliciesManager,
                                                     processInstanceConverter,
                                                     null,
-                                                    null)
-                             );
-        
+                                                    null,
+                                                    null));
        doReturn(true).when(securityPoliciesManager).canWrite("processDefinitionKey");
   
     }
@@ -74,7 +73,7 @@ public class ProcessRuntimeImplTest {
         UpdateProcessPayload updateProcessPayload = ProcessPayloadBuilder.update()
                 .withProcessInstanceId("processId")
                 .withBusinessKey("businessKey")
-                .withProcessInstanceName("name")
+                .withName("name")
                 .build();
         
         ProcessInstanceImpl process = new ProcessInstanceImpl();
